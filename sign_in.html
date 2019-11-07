@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>登录页</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background: grey;
+        }
+
+        .form-wrapper {
+            border: 1px solid white;
+            padding: 20px;
+            border-radius: 10px;
+            min-width: 365px;
+        }
+
+        .form-wrapper .row {
+            margin: 10px 0;
+        }
+
+        .form-wrapper .row>label {
+            display: inline-block;
+            min-width: 4em;
+        }
+
+        .form-wrapper .row:nth-child(3),
+        .sign {
+            text-align: center;
+        }
+
+        .sign {
+            font-size: 30px;
+            color: deepskyblue;
+        }
+
+        .error {
+            color: deepskyblue;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="form-wrapper">
+        <div class="sign">登录</div>
+        <form id="signInForm">
+            <div class="row">
+                <label>邮箱</label>
+                <input type="text" name="email">
+                <span class="error"></span>
+            </div>
+            <div class="row">
+                <label>密码</label>
+                <input type="password" name="password">
+                <span class="error"></span>
+            </div>
+            <div class="row">
+                <input type="submit" value="点击登录">
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+    <script>
+        let $form = $('#signInForm')
+        $form.on('submit', (e) => {
+            e.preventDefault()
+            let hash = {}
+            let need = ['email', 'password']
+            need.forEach((name) => {
+                let value = $form.find(`[name=${name}]`).val()
+                hash[name] = value
+            })
+            $form.find('.error').each((index, span) => {
+                $(span).text('')
+            })
+            if (hash['email'] === '') {
+                $form.find('[name="email"]').siblings('.error')
+                    .text('请输入邮箱')
+                return
+            }
+            if (hash['password'] === '') {
+                $form.find('[name="password"]').siblings('.error')
+                    .text('请输入密码')
+                return
+            }
+            $.post('/sign_in', hash)
+                .then((response) => {
+                    window.location.href = '/'
+                }, (request) => {
+                    alert('邮箱与密码不匹配')
+                })
+        })
+    </script>
+</body>
+
+</html>
