@@ -4,9 +4,11 @@ var url = require('url')
 var port = process.argv[2]
 
 if (!port) {
-  console.log('请指定端口号好不啦？\nnode server.js 8888 这样不会吗？')
+  console.log('麻烦请指定下端口号？\nnode server.js 8888 这样不会吗？')
   process.exit(1)
 }
+
+let sessions = {}
 
 var server = http.createServer(function (request, response) {
   var parsedUrl = url.parse(request.url, true)
@@ -21,10 +23,30 @@ var server = http.createServer(function (request, response) {
 
   console.log('含查询字符串的路径\n' + pathWithQuery)
 
-  if (path === '/') {
-    let string = fs.readFileSync('./index.html', 'utf8')
+  /**  设置缓存实验  **/
+  if (path === '/setCache/setCache.css') {
+    let string = fs.readFileSync('./setCache/setCache.css', 'utf8')
+    response.setHeader('Content-Type', 'text/css;charset=utf8')
+    /**  设置Cache-Control，优先使用  **/
+    response.setHeader('Cache-Control', 'max-age=600000000')
 
-    let cookies = request.headers.cookie.split('; ')
+    response.write(string)
+    response.end()
+  } else if (path === '/setCache/setCache.js') {
+    let string = fs.readFileSync('./setCache/setCache.js', 'utf8')
+    response.setHeader('Content-Type', 'application/javascript;charset=utf8')
+    /**  设置Expires，本地时间，不靠谱  **/
+    response.setHeader('Expires', 'Fri, 08 Nov 2019 08:58:49 GMT')
+
+    response.write(string)
+    response.end()
+    /**  实验结束  **/
+  } else if (path === '/') {
+    let string = fs.readFileSync('./index.html', 'utf8')
+    let cookies = ''
+    if (request.headers.cookie) {
+      cookies = request.headers.cookie.split('; ')
+    }
     let hash = {}
     for (let i = 0; i < cookies.length; i++) {
       let parts = cookies[i].split('=')
@@ -32,7 +54,13 @@ var server = http.createServer(function (request, response) {
       let value = parts[1]
       hash[key] = value
     }
-    let email = hash.sign_in_email
+
+    let mySession = sessions[hash.sessionId]
+    let email
+    if (mySession) {
+      email = mySession.sign_in_email
+    }
+
     let users = fs.readFileSync('./db/users', 'utf8')
     users = JSON.parse(users)
     let foundUser
@@ -43,9 +71,9 @@ var server = http.createServer(function (request, response) {
       }
     }
     if (foundUser) {
-      string = string.replace('__email__', foundUser.email)
+      string = string.replace('__password__', foundUser.password)
     } else {
-      string = string.replace('__email__', '尚未登录，请登录！')
+      string = string.replace('__password__', '不知道')
     }
 
     response.statusCode = 200
@@ -58,7 +86,7 @@ var server = http.createServer(function (request, response) {
     response.setHeader('Content-Type', 'text/html;charset=utf-8')
     response.write(string)
     response.end()
-  } else if (path === '/sign_up' && method === 'POST') {
+  } else if (path === '/sign_up' && method === 'POST') {  //注册
     readBody(request).then((body) => {
       let strings = body.split('&')
       let hash = {}
@@ -115,7 +143,7 @@ var server = http.createServer(function (request, response) {
     response.setHeader('Content-Type', 'text/html;charset=utf-8')
     response.write(string)
     response.end()
-  } else if (path === '/sign_in' && method === 'POST') {
+  } else if (path === '/sign_in' && method === 'POST') {  //登录
     readBody(request).then((body) => {
       let strings = body.split('&')
       let hash = {}
@@ -140,7 +168,9 @@ var server = http.createServer(function (request, response) {
         }
       }
       if (found) {
-        response.setHeader('Set-Cookie', `sign_in_email=${email}`)
+        let sessionId = Math.random() * 10000000
+        sessions[sessionId] = { sign_in_email: email }
+        response.setHeader('Set-Cookie', `sessionId=${sessionId}`)
         response.statusCode = 200
       } else {
         response.statusCode = 401
